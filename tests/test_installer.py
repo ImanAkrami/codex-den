@@ -150,8 +150,8 @@ def test_actual_installer_update_and_uninstall_in_isolated_tool_home(tmp_path):
         "XDG_DATA_HOME": str(tmp_path / "home/.local/share"),
         "UV_TOOL_DIR": str(tmp_path / "tools"),
         "UV_TOOL_BIN_DIR": str(tool_bin),
-        "UV_CACHE_DIR": str(PROJECT / ".cache/uv"),
-        "UV_OFFLINE": "true",
+        "UV_CACHE_DIR": str(tmp_path / "cache"),
+        "UV_OFFLINE": "false",
         "UV_PYTHON_DOWNLOADS": "never",
     }
     env.pop("CODEX_HOME", None)
