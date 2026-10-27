@@ -1,0 +1,25 @@
+name: Bug report
+description: Report reproducible unexpected behavior
+title: "bug: "
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version and environment
+      description: Codex Den version, Linux distribution, terminal, and editor version
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction and expected behavior
+      description: Minimal steps, command, expected result, actual result, and other active editor sessions.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Redacted diagnostics
+      description: Review doctor --json output before posting. Never attach credentials, auth files, session databases, whole homes, or secret configuration.
+      render: text
