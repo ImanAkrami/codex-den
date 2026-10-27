@@ -10,6 +10,8 @@ uv build
 
 The gate runs Ruff formatting/linting and pytest with subprocess coverage. Coverage identifies gaps; behavioral assertions and failure recovery determine quality. Tests use temporary homes, isolated tool directories, and fake editor binaries. They never require accounts, credentials, or personal editor profiles.
 
+Installation checks use fresh disposable package caches and require network access to resolve build/runtime dependencies. They do not depend on a warm workstation cache.
+
 ## Focused checks
 
 ```sh
