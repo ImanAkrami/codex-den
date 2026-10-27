@@ -424,3 +424,50 @@ async def test_empty_compare_explains_prerequisites_without_raw_exception(servic
         assert "Create an environment" in message
         assert "unpack" not in message
         assert not service.store.root.exists()
+
+
+async def test_successful_review_worker_survives_dialog_dismissal(service, monkeypatch):
+    from codex_den.ui_forms import ReviewScreen
+
+    entered, release, returned = threading.Event(), threading.Event(), threading.Event()
+    unmounted = asyncio.Event()
+    calls = []
+
+    def operation():
+        calls.append(True)
+        entered.set()
+        assert release.wait(5)
+
+    class ObservedReview(ReviewScreen):
+        def on_unmount(self):
+            unmounted.set()
+
+    app = DenApp(service)
+    review = ObservedReview("Apply", {"target": "temporary"}, operation)
+    original = app.call_from_thread
+
+    def hold_thread_after_callback(callback, *args, **kwargs):
+        result = original(callback, *args, **kwargs)
+        if callback == review.finish:
+            # Force dismissal to finish before the callback's thread unwinds.
+            # A successfully applied operation must still complete normally.
+            assert returned.wait(5)
+        return result
+
+    monkeypatch.setattr(app, "call_from_thread", hold_thread_after_callback)
+    async with app.run_test(size=(80, 24)) as pilot:
+        app.push_screen(review)
+        await pilot.pause()
+        try:
+            await pilot.click("#confirm")
+            assert await asyncio.to_thread(entered.wait, 5)
+            (worker,) = list(app.workers)
+            release.set()
+            await asyncio.wait_for(unmounted.wait(), 5)
+        finally:
+            release.set()
+            returned.set()
+        await worker.wait()
+        assert review.applied
+        assert calls == [True]
+        assert len(app.screen_stack) == 1

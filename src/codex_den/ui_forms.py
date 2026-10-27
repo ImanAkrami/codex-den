@@ -7,6 +7,7 @@ from rich.text import Text
 from textual import work
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.widgets import Button, Checkbox, Input, Label, Select, SelectionList, Static, TextArea
+from textual.worker import Worker, WorkerState
 
 from .errors import DenError
 from .transfers import safe_relative
@@ -62,9 +63,19 @@ class ReviewScreen(DialogScreen):
         try:
             result = self.operation()
         except (DenError, OSError, ValueError) as error:
-            self.app.call_from_thread(self.show_error, error)
+            return False, error
         else:
-            self.app.call_from_thread(self.finish, result)
+            return True, result
+
+    def on_worker_state_changed(self, event: Worker.StateChanged):
+        if event.worker.name == "apply_operation" and event.state == WorkerState.SUCCESS:
+            # Dismissing the screen cancels workers it owns. Handle the result
+            # after completion so a successful apply cannot cancel itself.
+            succeeded, result = event.worker.result
+            if succeeded:
+                self.finish(result)
+            else:
+                self.show_error(result)
 
     def show_error(self, error):
         message = (
