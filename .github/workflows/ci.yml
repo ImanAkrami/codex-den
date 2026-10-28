@@ -24,6 +24,9 @@ jobs:
           python-version: ${{ matrix.python }}
           enable-cache: true
       - run: sh -n install.sh
+      - run: sh -n scripts/install-source.sh
       - run: uv sync --frozen
       - run: uv run python scripts/check.py
       - run: uv build
+  native:
+    uses: ./.github/workflows/native.yml

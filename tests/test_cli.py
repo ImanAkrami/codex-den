@@ -3,6 +3,8 @@ import os
 import subprocess
 import sys
 
+import pytest
+
 
 def cli(tmp_path, *arguments, extra_env=None):
     env = {
@@ -252,3 +254,39 @@ def test_config_get_honors_environment_and_workspace_scope(tmp_path):
     assert result["source"] == "workspace"
     result = cli(tmp_path, "config", "get", "frontend", "--scope", "environment", "--json")
     assert result.returncode != 0
+
+
+@pytest.mark.parametrize("operation", ["update", "uninstall"])
+def test_frozen_lifecycle_guidance_needs_no_package_manager(tmp_path, monkeypatch, operation):
+    import shlex
+
+    from codex_den.cli import lifecycle
+
+    binary = tmp_path / "bin with spaces $(touch unintended)" / "codex-den"
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", str(binary))
+    result = lifecycle(operation)
+    assert result["automatic"] is False
+    assert "uv " not in result["command"]
+    assert "python" not in result["command"].lower()
+    assert "--" + operation in result["command"]
+    assert shlex.quote(str(binary.parent)) in result["command"]
+    assert "retained" in result["note"]
+    assert not binary.parent.exists()
+
+
+def test_direct_download_update_guides_normal_install_and_uninstall_quotes_file(
+    tmp_path, monkeypatch
+):
+    import shlex
+
+    from codex_den.cli import lifecycle
+
+    home = tmp_path / "home"
+    binary = tmp_path / "downloads with spaces" / "codex-den-v0.1.0a1-linux-x86_64"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", str(binary))
+    assert str(home / ".local/bin") in lifecycle("update")["command"]
+    assert shlex.split(lifecycle("uninstall")["command"]) == ["rm", "--", str(binary)]
+    assert not home.exists()

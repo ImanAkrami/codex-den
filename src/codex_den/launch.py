@@ -4,6 +4,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -96,4 +97,10 @@ def child_environment(codex_home: Path) -> dict[str, str]:
         for key, value in os.environ.items()
         if not key.startswith(("VSCODE_", "CURSOR_")) and key != "ELECTRON_RUN_AS_NODE"
     }
+    if getattr(sys, "frozen", False):
+        # The bundle's libraries belong to this process, not external editors.
+        if "LD_LIBRARY_PATH_ORIG" in inherited:
+            inherited["LD_LIBRARY_PATH"] = inherited["LD_LIBRARY_PATH_ORIG"]
+        else:
+            inherited.pop("LD_LIBRARY_PATH", None)
     return {**inherited, "CODEX_HOME": str(codex_home)}

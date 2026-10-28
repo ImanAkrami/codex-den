@@ -4,22 +4,20 @@
 
 Manage the Codex extension in **VS Code** and **Cursor** with a terminal dashboard and a scriptable CLI. Give each project its own environment, or let several repositories share settings, skills, extensions, and editor profiles.
 
-[![CI](https://github.com/ImanAkrami/codex-den/actions/workflows/ci.yml/badge.svg)](https://github.com/ImanAkrami/codex-den/actions/workflows/ci.yml) ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue) ![Linux](https://img.shields.io/badge/platform-Linux-lightgrey) [![MIT license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![CI](https://github.com/ImanAkrami/codex-den/actions/workflows/ci.yml/badge.svg)](https://github.com/ImanAkrami/codex-den/actions/workflows/ci.yml) ![Linux](https://img.shields.io/badge/platform-Linux-lightgrey) [![MIT license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ![Codex Den dashboard showing shared and independent workspaces](docs/images/dashboard.png)
 
 ## Install
 
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then:
+One command installs the standalone executable:
 
 ```sh
-git clone https://github.com/ImanAkrami/codex-den.git
-cd codex-den
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/ImanAkrami/codex-den/main/install.sh | sh
 codex-den setup
 ```
 
-Python 3.12+ runs in an isolated tool environment. Installation needs no sudo, does not edit shell profiles, and never opens an editor. Already have a checkout? Run `./install.sh` there. See [installation](docs/installation.md) for version pinning, updates, uninstall, and PATH troubleshooting.
+**No Python, uv, or sudo required.** Supports Linux x86_64 and ARM64 with glibc 2.35+. The installer verifies the release checksum and installs into `~/.local/bin`; it does not edit shell profiles or open an editor. Add that directory to PATH if your shell does not already include it. See [installation](docs/installation.md) to inspect the script first, pin a version, update, uninstall, or install from source.
 
 **Linux preview:** version `0.1.0a1`. See [compatibility](docs/compatibility.md) for platform support and editor-validation requirements.
 
@@ -64,6 +62,8 @@ codex-den open api --frontend vscode -- --new-window
 [CLI reference](docs/cli.md) · [Environments](docs/environments.md) · [Workspace features](docs/workspace-features.md) · [Troubleshooting](docs/troubleshooting.md)
 
 ## Contribute
+
+Development requires Python 3.12+ and [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
 ```sh
 uv sync --frozen

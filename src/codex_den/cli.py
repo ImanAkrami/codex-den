@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import shlex
 import sys
 from pathlib import Path
 
@@ -196,6 +197,25 @@ def inventory(service):
 
 
 def lifecycle(operation):
+    if getattr(sys, "frozen", False):
+        executable = Path(sys.executable)
+        if operation == "uninstall" and executable.name != "codex-den":
+            command = f"rm -- {shlex.quote(str(executable))}"
+        else:
+            bin_dir = (
+                executable.parent if executable.name == "codex-den" else Path.home() / ".local/bin"
+            )
+            arguments = shlex.join([f"--{operation}", "--bin-dir", str(bin_dir)])
+            command = (
+                "curl -fsSL https://raw.githubusercontent.com/ImanAkrami/codex-den/main/install.sh"
+                f" | sh -s -- {arguments}"
+            )
+        return {
+            "operation": operation,
+            "automatic": False,
+            "command": command,
+            "note": "Standalone installation guidance. The installer verifies ownership before changing files. Configuration, environments, and repositories are retained.",
+        }
     return {
         "operation": operation,
         "automatic": False,

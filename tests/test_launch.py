@@ -1,10 +1,37 @@
 import json
 import os
+import sys
 from pathlib import Path
 
 import pytest
 
 from codex_den.errors import DenError
+
+
+@pytest.mark.parametrize("original", [None, "", "/opt/editor-libraries"])
+def test_frozen_editor_children_restore_system_library_routing(tmp_path, monkeypatch, original):
+    from codex_den.launch import child_environment
+
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setenv("LD_LIBRARY_PATH", "/tmp/bundle/lib")
+    if original is None:
+        monkeypatch.delenv("LD_LIBRARY_PATH_ORIG", raising=False)
+    else:
+        monkeypatch.setenv("LD_LIBRARY_PATH_ORIG", original)
+    before = dict(os.environ)
+    child = child_environment(tmp_path / "codex-home")
+    assert child.get("LD_LIBRARY_PATH") == original
+    assert child["CODEX_HOME"] == str(tmp_path / "codex-home")
+    assert dict(os.environ) == before
+
+
+def test_source_launch_preserves_user_library_routing(tmp_path, monkeypatch):
+    from codex_den.launch import child_environment
+
+    monkeypatch.setattr(sys, "frozen", False, raising=False)
+    monkeypatch.setenv("LD_LIBRARY_PATH", "/opt/custom-libraries")
+    monkeypatch.setenv("LD_LIBRARY_PATH_ORIG", "/opt/older-libraries")
+    assert child_environment(tmp_path / "codex-home")["LD_LIBRARY_PATH"] == "/opt/custom-libraries"
 
 
 def prepared(service, tmp_path, editor):
