@@ -26,6 +26,7 @@ Changelog = "https://github.com/ImanAkrami/codex-den/blob/main/CHANGELOG.md"
 codex-den = "codex_den.cli:main"
 
 [dependency-groups]
+binary = ["pyinstaller==6.22.3", "pyinstaller-hooks-contrib==2026.9"]
 dev = ["pytest>=8,<10", "pytest-asyncio>=1,<2", "pytest-cov>=6,<8", "hypothesis>=6,<7", "pexpect>=4.9,<5", "ruff>=0.12,<1"]
 
 [tool.pytest.ini_options]
