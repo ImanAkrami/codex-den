@@ -28,14 +28,24 @@ def prepare_artifacts(tag, version, destination):
     source_archive = destination / f"codex_den-{version}.tar.gz"
     if len(artifacts) != 1 or not source_archive.is_file():
         raise ValueError("Build one wheel and source archive for the selected version first")
+    artifacts.append(source_archive)
+    for architecture in ("x86_64", "aarch64"):
+        artifacts.extend(
+            [
+                destination / f"codex-den-{tag}-linux-{architecture}",
+                destination / f"THIRD_PARTY_NOTICES-linux-{architecture}.txt",
+            ]
+        )
+    if any(path.is_symlink() or not path.is_file() for path in artifacts):
+        raise ValueError("Build both native executables and their notices before preparing assets")
     source = Path("install.sh").read_text()
-    marker = "DEFAULT_REF='main'"
-    if source.count(marker) != 1:
-        raise ValueError("Installer default reference could not be pinned")
+    pattern = r"^DEFAULT_VERSION='v[0-9]+\.[0-9]+\.[0-9]+(?:(?:a|b|rc)[0-9]+)?'$"
+    if len(re.findall(pattern, source, flags=re.MULTILINE)) != 1:
+        raise ValueError("Installer default version could not be pinned")
     installer = destination / "install.sh"
-    installer.write_text(source.replace(marker, f"DEFAULT_REF='{tag}'"))
+    installer.write_text(re.sub(pattern, f"DEFAULT_VERSION='{tag}'", source, flags=re.MULTILINE))
     installer.chmod(0o755)
-    artifacts.extend([source_archive, installer])
+    artifacts.append(installer)
     checksums = "".join(
         f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n" for path in artifacts
     )

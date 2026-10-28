@@ -21,7 +21,7 @@ def release_checkout(tmp_path, monkeypatch):
     root = tmp_path / "checkout"
     root.mkdir()
     (root / "pyproject.toml").write_text('[project]\nversion="0.1.0a1"\n')
-    (root / "install.sh").write_text("#!/bin/sh\nDEFAULT_REF='main'\n")
+    (root / "install.sh").write_text("#!/bin/sh\nDEFAULT_VERSION='v0.0.1'\n")
     for args in (["init", "-q"], ["add", "."], ["commit", "-qm", "Initial"], ["tag", "v0.1.0a1"]):
         subprocess.run(["git", *args], cwd=root, check=True)
     return root
@@ -50,17 +50,29 @@ def test_release_requires_tagged_commit(release_checkout):
     assert "tagged commit" in result.stderr
 
 
-def test_release_assets_pin_installer_and_verify_from_download_directory(release_checkout):
-    dist = release_checkout / "dist"
+def distribution_files(root):
+    dist = root / "dist"
     dist.mkdir()
-    (dist / "codex_den-0.1.0a1-py3-none-any.whl").write_bytes(b"wheel")
-    (dist / "codex_den-0.1.0a1.tar.gz").write_bytes(b"source")
+    for name in (
+        "codex_den-0.1.0a1-py3-none-any.whl",
+        "codex_den-0.1.0a1.tar.gz",
+        "codex-den-v0.1.0a1-linux-x86_64",
+        "codex-den-v0.1.0a1-linux-aarch64",
+        "THIRD_PARTY_NOTICES-linux-x86_64.txt",
+        "THIRD_PARTY_NOTICES-linux-aarch64.txt",
+    ):
+        (dist / name).write_bytes(name.encode())
+    return dist
+
+
+def test_release_assets_pin_installer_and_verify_from_download_directory(release_checkout):
+    dist = distribution_files(release_checkout)
     result = run(release_checkout, "v0.1.0a1", "--artifacts", str(dist))
     assert result.returncode == 0, result.stderr
-    assert "DEFAULT_REF='v0.1.0a1'" in (dist / "install.sh").read_text()
-    assert "DEFAULT_REF='main'" in (release_checkout / "install.sh").read_text()
+    assert "DEFAULT_VERSION='v0.1.0a1'" in (dist / "install.sh").read_text()
+    assert "DEFAULT_VERSION='v0.0.1'" in (release_checkout / "install.sh").read_text()
     checksums = (dist / "SHA256SUMS").read_text().splitlines()
-    assert len(checksums) == 3
+    assert len(checksums) == 7
     for line in checksums:
         digest, name = line.split("  ")
         assert "/" not in name
@@ -74,6 +86,50 @@ def test_release_assets_pin_installer_and_verify_from_download_directory(release
 def test_missing_release_artifact_leaves_no_partial_manifest(release_checkout):
     dist = release_checkout / "dist"
     dist.mkdir()
+    result = run(release_checkout, "v0.1.0a1", "--artifacts", str(dist))
+    assert result.returncode != 0
+    assert not (dist / "SHA256SUMS").exists()
+
+
+@pytest.mark.parametrize(
+    "missing",
+    [
+        "codex-den-v0.1.0a1-linux-x86_64",
+        "codex-den-v0.1.0a1-linux-aarch64",
+        "THIRD_PARTY_NOTICES-linux-aarch64.txt",
+    ],
+)
+def test_release_requires_every_native_artifact(release_checkout, missing):
+    dist = distribution_files(release_checkout)
+    (dist / missing).unlink()
+    result = run(release_checkout, "v0.1.0a1", "--artifacts", str(dist))
+    assert result.returncode != 0
+    assert not (dist / "install.sh").exists()
+    assert not (dist / "SHA256SUMS").exists()
+
+
+@pytest.mark.parametrize("installer", ["no marker", "DEFAULT_VERSION='v0.0.1'\n" * 2])
+def test_release_rejects_ambiguous_installer_before_writing(release_checkout, installer):
+    dist = distribution_files(release_checkout)
+    (release_checkout / "install.sh").write_text(installer)
+    result = run(release_checkout, "v0.1.0a1", "--artifacts", str(dist))
+    assert result.returncode != 0
+    assert not (dist / "install.sh").exists()
+    assert not (dist / "SHA256SUMS").exists()
+
+
+def test_release_accepts_already_stamped_version(release_checkout):
+    dist = distribution_files(release_checkout)
+    (release_checkout / "install.sh").write_text("DEFAULT_VERSION='v0.1.0a1'\n")
+    result = run(release_checkout, "v0.1.0a1", "--artifacts", str(dist))
+    assert result.returncode == 0, result.stderr
+
+
+def test_release_refuses_symlink_artifacts(release_checkout):
+    dist = distribution_files(release_checkout)
+    native = dist / "codex-den-v0.1.0a1-linux-aarch64"
+    native.unlink()
+    native.symlink_to(dist / "codex-den-v0.1.0a1-linux-x86_64")
     result = run(release_checkout, "v0.1.0a1", "--artifacts", str(dist))
     assert result.returncode != 0
     assert not (dist / "SHA256SUMS").exists()

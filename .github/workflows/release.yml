@@ -9,7 +9,12 @@ on:
 permissions:
   contents: read
 jobs:
+  native:
+    uses: ./.github/workflows/native.yml
+    with:
+      ref: ${{ inputs.tag }}
   draft:
+    needs: native
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -30,6 +35,11 @@ jobs:
       - run: uv sync --frozen
       - run: uv run python scripts/check.py
       - run: uv build
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: native-*
+          path: dist
+          merge-multiple: true
       - name: Prepare artifacts and draft only
         env:
           GH_TOKEN: ${{ github.token }}
@@ -41,4 +51,4 @@ jobs:
           case "$RELEASE_TAG" in
             *a*|*b*|*rc*) set -- "$@" --prerelease ;;
           esac
-          gh release create "$RELEASE_TAG" dist/*.whl dist/*.tar.gz dist/install.sh dist/SHA256SUMS "$@"
+          gh release create "$RELEASE_TAG" dist/* "$@"

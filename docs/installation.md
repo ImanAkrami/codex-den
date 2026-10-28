@@ -1,61 +1,78 @@
 # Installation
 
-Codex Den currently supports Linux and Python 3.12+. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) first. The installer uses uv's isolated tool environments; it never installs editors, modifies shell profiles, copies authentication, or opens applications.
+## Standalone executable
 
-## From a checkout
+Codex Den provides prebuilt Linux executables for x86_64 and ARM64, with glibc 2.35 or newer (including Ubuntu 22.04+). You do not need Python, uv, Git, or sudo. The installer needs curl or wget and standard shell tools including `sha256sum`.
 
 ```sh
-git clone https://github.com/ImanAkrami/codex-den.git
-cd codex-den
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/ImanAkrami/codex-den/main/install.sh | sh
 codex-den --version
 codex-den setup
 ```
 
-The script locates its own checkout even when run from another directory. Use `--source /path/to/codex-den` to choose a different checkout. Paths containing spaces are supported.
+The executable goes into `~/.local/bin`. Installation verifies its SHA-256 against the versioned release manifest. It never runs the app, installs editors, edits shell profiles, or copies authentication. The application bundles its Python runtime and dependencies; they are extracted privately when the executable starts.
 
-Without the helper script, the equivalent is:
-
-```sh
-uv tool install --python 3.12 .
-```
-
-## Pin a version
-
-Install a published tag, branch, or full commit from the project repository:
+To read the script before running it, or keep a copy for later:
 
 ```sh
-REF=main # Replace with a published tag or full commit to pin it.
-./install.sh --ref "$REF"
-./install.sh --python 3.13
+curl -fsSL https://raw.githubusercontent.com/ImanAkrami/codex-den/main/install.sh -o install.sh
+less install.sh
+sh install.sh --dry-run
+sh install.sh
 ```
 
-For online installation after choosing a source revision, download and inspect its `install.sh`, then run it with `--ref` set to that same revision. Pinning a full commit provides a reproducible source reference; branch names follow their current contents. No package-registry install is advertised until a package is published.
+Only run a script from a source you trust. Checksums detect corrupt downloads; they do not independently authenticate the publisher. Release assets include architecture-specific third-party notices and `SHA256SUMS`.
 
-## Inspect, update, or remove
+## Pin, update, or remove
 
 ```sh
-./install.sh --dry-run
-./install.sh --update
-./install.sh --ref "$REF" --update
-./install.sh --uninstall
+# Pin both the installer and executable to a published version.
+curl -fsSL https://github.com/ImanAkrami/codex-den/releases/download/v0.1.0a1/install.sh -o install.sh
+sh install.sh --version v0.1.0a1
+
+# Download the current installer when updating to its default release.
+curl -fsSL https://raw.githubusercontent.com/ImanAkrami/codex-den/main/install.sh | sh -s -- --update
+
+# Remove only the owned executable; keep all application data.
+sh install.sh --uninstall
 ```
 
-`--dry-run` prints arguments and performs no installation. `--update` replaces only the Codex Den tool. Update a local checkout first if using the default local source. `--uninstall` removes the tool and retains all configuration, environments, history, and repositories.
+`--version TAG` selects a published release; it does not query GitHub's “latest” endpoint, which excludes previews. A saved installer retains its stamped default version. `--update` installs if absent and safely replaces an owned installation. All installs check ownership: unrelated commands, symlinks, or modified executables are retained and reported. Concurrent changes use an installation lock and ordinary publication failures roll back. After a hard kill, inspect any remaining lock/staged files before retrying.
 
-For an installation made directly with uv, `uv tool uninstall codex-den` removes the command. `codex-den update` and `codex-den uninstall` display package-manager instructions; they do not alter installations themselves.
+`codex-den update` and `codex-den uninstall` print commands appropriate to the installed executable's directory. They do not change installations themselves. Uninstall retains configuration, environments, history, and working repositories.
 
-## PATH and storage
+## Custom directory and PATH
 
-If `codex-den` is not found, run `uv tool dir --bin` and add the displayed directory to PATH using your shell's normal configuration. The installer does not edit that configuration automatically.
+```sh
+sh install.sh --bin-dir "$HOME/tools/bin"
+sh install.sh --bin-dir "$HOME/tools/bin" --update
+sh install.sh --bin-dir "$HOME/tools/bin" --uninstall
+```
 
-Default configuration is `~/.config/codex-den/config.toml`; managed state is `~/.local/share/codex-den/`. XDG variables, `--config`, and `--data-root` can select alternate locations. Keep working repositories outside managed storage. Existing editor/agent homes and executable directories cannot be used as state destinations.
+`CODEX_DEN_BIN_DIR` also selects the destination. Use the same directory for future updates/removal. Paths containing spaces are supported. Keep the adjacent `.codex-den-install` ownership record with the command.
 
-## Try without installation
+If `codex-den` is not found, add its installation directory to PATH using your shell configuration, or run `~/.local/bin/codex-den setup` directly. The installer prints the exact executable path. It does not change PATH automatically.
+
+You can also download the matching executable from [Releases](https://github.com/ImanAkrami/codex-den/releases), verify `SHA256SUMS`, and mark it executable yourself. A manual download has no installer ownership record: update/remove it manually, or install into a separate directory using the script.
+
+## Optional source installation
+
+Contributors and users of other compatible Linux systems can install with [uv](https://docs.astral.sh/uv/getting-started/installation/) and Python 3.12+. uv can obtain the Python runtime; this workflow is separate from the standalone installer.
+
+```sh
+git clone https://github.com/ImanAkrami/codex-den.git
+cd codex-den
+./scripts/install-source.sh
+# Or: uv tool install --python 3.12 .
+```
+
+The source helper finds its checkout even when run elsewhere. It supports `--source /path/to/checkout`, `--ref TAG_OR_COMMIT`, `--python 3.13`, `--dry-run`, `--update`, and `--uninstall`. Update the checkout before updating a local source install. Use `uv tool dir --bin` to locate its command directory. Remove a direct uv install with `uv tool uninstall codex-den`. If switching installation methods, uninstall using the original method first; the binary installer refuses an existing uv launcher.
+
+To run directly from a checkout without tool installation:
 
 ```sh
 uv sync --frozen
 uv run codex-den
 ```
 
-See [quick start](quick-start.md) for the wizard and [compatibility](compatibility.md) for release limits.
+Default configuration is `~/.config/codex-den/config.toml`; managed state is `~/.local/share/codex-den/`. XDG variables, `--config`, and `--data-root` select alternate locations. Keep repositories outside managed storage. See [quick start](quick-start.md) for setup and [compatibility](compatibility.md) for release limits.

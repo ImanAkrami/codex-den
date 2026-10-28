@@ -163,7 +163,7 @@ codex-den completion bash
 
 `doctor` reports paths and static executable availability, identifies common AppImage wrapper concerns, and does not start applications or validate login. Completion currently supplies top-level command names for Bash/Zsh/Fish; dynamic registered-name completion remains planned.
 
-Update/uninstall commands display package-manager guidance without changing installations or deleting data. Use `uv tool uninstall codex-den` or the matching installer. No automatic data purge or background update checks run.
+Update/uninstall commands display installation-specific guidance without changing installations or deleting data. Standalone installations receive the one-line installer command with their actual installation directory; direct downloads receive manual removal guidance. Source installs receive uv/pipx guidance. Use the original installation method; see [installation](installation.md). No automatic data purge or background update checks run.
 
 Exit statuses: 0 success, 2 usage/configuration/domain validation, 1 filesystem/operational failure, 130 cancellation. Failed editor launches forward the editor exit status; termination by a signal uses 128 plus its signal number.
 

@@ -1,0 +1,46 @@
+name: Native executables
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Commit or tag to build; defaults to the calling workflow commit
+        type: string
+        default: ''
+permissions:
+  contents: read
+jobs:
+  build:
+    name: Linux / ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            arch: x86_64
+          - runner: ubuntu-22.04-arm
+            arch: aarch64
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: '0.12.12'
+          python-version: '3.12'
+          enable-cache: true
+      - run: uv sync --frozen --group binary
+      - run: uv run --no-sync python scripts/build_binary.py
+      - name: Exercise the actual executable without Python or uv on PATH
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          VERSION=$(uv run --no-sync python -c 'from codex_den import __version__; print(__version__)')
+          uv run --no-sync python scripts/check_binary.py "dist/codex-den-v$VERSION-linux-$ARCH"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+          compression-level: 0
