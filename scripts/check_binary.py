@@ -63,6 +63,11 @@ def check(executable):
         run("--version")
         run("--help")
         json.loads(run("config", "show", "--json"))
+        for action in ("update", "uninstall"):
+            guidance = json.loads(run(action, "--json"))
+            assert not guidance["automatic"]
+            assert "uv tool" not in guidance["command"]
+            assert "python" not in guidance["command"].lower()
         assert not (root / "home").exists()
         assert not (root / "data").exists()
         child = pexpect.spawn(

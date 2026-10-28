@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 PROJECT = Path(__file__).resolve().parents[1]
-SCRIPT = PROJECT / "install.sh"
+SCRIPT = PROJECT / "scripts/install-source.sh"
 
 
 @pytest.fixture
@@ -134,8 +134,10 @@ def test_actual_installer_update_and_uninstall_in_isolated_tool_home(tmp_path):
     checkout = tmp_path / "source checkout"
     checkout.mkdir()
     shutil.copytree(PROJECT / "src", checkout / "src", ignore=shutil.ignore_patterns("__pycache__"))
-    for name in ("pyproject.toml", "README.md", "LICENSE", "install.sh"):
+    for name in ("pyproject.toml", "README.md", "LICENSE"):
         shutil.copy2(PROJECT / name, checkout / name)
+    (checkout / "scripts").mkdir()
+    shutil.copy2(SCRIPT, checkout / "scripts/install-source.sh")
     module = checkout / "src/codex_den/__init__.py"
     original = module.read_text()
     module.write_text(original + '\nINSTALLER_SMOKE = "before"\n')
@@ -163,20 +165,22 @@ def test_actual_installer_update_and_uninstall_in_isolated_tool_home(tmp_path):
         assert result.returncode == 0, result.stderr
         return result.stdout
 
-    command("sh", str(checkout / "install.sh"), "--python", sys.executable)
+    command("sh", str(checkout / "scripts/install-source.sh"), "--python", sys.executable)
     executable = tool_bin / "codex-den"
     assert "0.1.0a1" in command(str(executable), "--version")
     command(str(executable), "environment", "create", "retained", "--json")
     registry = tmp_path / "home/.local/share/codex-den/registry.json"
     retained = registry.read_bytes()
     module.write_text(original + '\nINSTALLER_SMOKE = "after"\n')
-    command("sh", str(checkout / "install.sh"), "--update", "--python", sys.executable)
+    command(
+        "sh", str(checkout / "scripts/install-source.sh"), "--update", "--python", sys.executable
+    )
     python = tmp_path / "tools/codex-den/bin/python"
     assert (
         command(str(python), "-c", "import codex_den; print(codex_den.INSTALLER_SMOKE)").strip()
         == "after"
     )
-    command("sh", str(checkout / "install.sh"), "--uninstall")
+    command("sh", str(checkout / "scripts/install-source.sh"), "--uninstall")
     assert not executable.exists()
     assert registry.read_bytes() == retained
     assert adjacent.read_text() == "existing installation"
